@@ -99,12 +99,7 @@ flowchart TB
 
 I used the VPC creation workflow to provision **two non-overlapping address spaces**. Each VPC included a public subnet, a route table, and an internet gateway. Keeping the CIDRs separate was essential: overlapping IPv4 CIDR blocks would prevent this VPC peering setup.
 
-<details>
-<summary>📸 Two VPCs and the VPC 2 public subnet topology — screenshot</summary>
-
 ![Two VPCs and the VPC 2 public subnet topology](screenshots/01-vpc-topology.png)
-
-</details>
 
 **Evidence:** The AWS VPC console shows both `NextWork-1-vpc` and `NextWork-2-vpc` available. The selected VPC 2 diagram shows its public subnet associated with its public route table.
 
@@ -114,21 +109,11 @@ I used the VPC creation workflow to provision **two non-overlapping address spac
 
 I launched one Amazon Linux 2023 instance in each public subnet to generate measurable network traffic. I used the EC2 console to select the appropriate VPC, subnet, network access, and security group. While the original lab guide mentions `t2.micro`, **my actual running instances were `t3.micro`**, as shown below.
 
-<details>
-<summary>📸 EC2 launch-time VPC, subnet and security group configuration — screenshot</summary>
-
 ![EC2 launch-time VPC, subnet and security group configuration](screenshots/02-ec2-launch-network.png)
-
-</details>
 
 **Evidence:** Launch configuration for VPC 1, including the public subnet and `NextWork-1-SG`. This is a configuration-stage capture, not the final running-instance state.
 
-<details>
-<summary>📸 Both EC2 test instances running and passing status checks — screenshot</summary>
-
 ![Both EC2 test instances running and passing status checks](screenshots/03-running-ec2-instances.png)
-
-</details>
 
 **Evidence:** Both EC2 instances were running and passed their displayed status checks. These instances served as the endpoints for both public and private ICMP tests.
 
@@ -138,12 +123,7 @@ For the lab's ping tests, the security groups allowed ICMP. SSH (TCP/22) was als
 
 I first created the destination log group, `NextWorkVPCFlowLogsGroup`, so the traffic data would have a central place to be stored and searched.
 
-<details>
-<summary>📸 Creation confirmation for the CloudWatch log group — screenshot</summary>
-
 ![Creation confirmation for the CloudWatch log group](screenshots/04-cloudwatch-log-group.png)
-
-</details>
 
 **Evidence:** CloudWatch shows successful creation of the log group. A log group contains log streams; Flow Logs can write streams associated with monitored network interfaces.
 
@@ -152,23 +132,13 @@ Next, I configured the **IAM service role** used for delivering records. Two pol
 - **Permissions policy:** Allowed the role to create or describe CloudWatch log resources and publish events, including `logs:CreateLogStream` and `logs:PutLogEvents`.
 - **Trust policy:** Allowed the AWS service principal `vpc-flow-logs.amazonaws.com` to assume the role with `sts:AssumeRole`.
 
-<details>
-<summary>📸 IAM trust policy permitting the VPC Flow Logs service to assume the role — screenshot</summary>
-
 ![IAM trust policy permitting the VPC Flow Logs service to assume the role](screenshots/05-vpc-flow-logs-trust-policy.png)
-
-</details>
 
 **Evidence:** The trust policy references the VPC Flow Logs service principal. The trust policy controls *who can assume the role*; the attached permissions policy controls *what that role can do*. My lab permissions policy used `"Resource": "*"`, so a future refinement would scope supported actions more tightly rather than claim the original policy was strictly least-privilege.
 
 I then created `NextWorkVPCFlowLog` on **VPC 1**, sent data to the CloudWatch log group, selected **All** traffic, and used a **1-minute maximum aggregation interval**.
 
-<details>
-<summary>📸 Active Flow Log with CloudWatch destination and IAM role — screenshot</summary>
-
 ![Active Flow Log with CloudWatch destination and IAM role](screenshots/06-active-vpc-flow-log.png)
-
-</details>
 
 **Evidence:** The console confirms an **Active** flow log, the CloudWatch destination, the named IAM role, and the configured traffic type and aggregation interval. This proves the monitoring resource was created; the later event screenshots verify log delivery.
 
@@ -182,12 +152,7 @@ ping -c 4 10.2.6.35
 
 The result was **4 packets transmitted, 0 received — 100% packet loss**.
 
-<details>
-<summary>📸 Initial private IP ping test with 100 percent packet loss — screenshot</summary>
-
 ![Initial private IP ping test with 100 percent packet loss](screenshots/07-private-ping-initial-failure.png)
-
-</details>
 
 **Evidence:** The test did not receive private-address replies. It showed an actual connectivity issue to investigate rather than assuming that VPCs were automatically connected.
 
@@ -197,12 +162,7 @@ I then tested communication using **Instance 2's public IPv4 address**. This tim
 ping -c 4 <INSTANCE_2_PUBLIC_IPV4>
 ```
 
-<details>
-<summary>📸 ICMP echo replies from Instance 2 public endpoint, public IP redacted — screenshot</summary>
-
 ![ICMP echo replies from Instance 2 public endpoint, public IP redacted](screenshots/08-public-ping-success.png)
-
-</details>
 
 **Evidence:** ICMP echo replies confirmed reachability via public addressing. **This was not evidence of working private VPC peering**; it established a useful contrast with the failed private-IP test.
 
@@ -212,12 +172,7 @@ I examined the route tables and found that VPC 1 originally had a `10.1.0.0/16 �
 
 I requested a peering connection between the two VPCs, accepted the request, and configured each subnet-associated route table with the other VPC's network as its destination.
 
-<details>
-<summary>📸 VPC peering request between VPC 1 and VPC 2 — screenshot</summary>
-
 ![VPC peering request between VPC 1 and VPC 2](screenshots/09-peering-request.png)
-
-</details>
 
 **Evidence:** The console shows the peering request in **Pending acceptance**. This image documents the request stage; the active peering routes below document later progress.
 
@@ -226,21 +181,11 @@ I requested a peering connection between the two VPCs, accepted the request, and
 | VPC 1 public route table | `10.2.0.0/16` | VPC peering connection (`pcx-...`) |
 | VPC 2 public route table | `10.1.0.0/16` | The same peering connection (`pcx-...`) |
 
-<details>
-<summary>📸 VPC 1 route table showing active route to VPC 2 — screenshot</summary>
-
 ![VPC 1 route table showing active route to VPC 2](screenshots/10-vpc1-peering-route.png)
-
-</details>
 
 **Evidence:** VPC 1 has an **Active** route toward `10.2.0.0/16` using the peering connection. Its local and internet gateway routes remain in place.
 
-<details>
-<summary>📸 VPC 2 route table showing active return route to VPC 1 — screenshot</summary>
-
 ![VPC 2 route table showing active return route to VPC 1](screenshots/11-vpc2-peering-route.png)
-
-</details>
 
 **Evidence:** VPC 2 has the reciprocal **Active** route toward `10.1.0.0/16`. Return routing is as important as forwarding traffic in the first direction.
 
@@ -250,21 +195,11 @@ After these changes, I repeated the private-IP test and **received replies from 
 
 With VPC Flow Logs enabled, I opened the CloudWatch log group and inspected its log streams. The console showed entries with both **`ACCEPT`** and **`REJECT`** actions.
 
-<details>
-<summary>📸 CloudWatch log events with accepted and rejected records — screenshot</summary>
-
 ![CloudWatch log events with accepted and rejected records](screenshots/12-cloudwatch-accept-reject-events.png)
-
-</details>
 
 **Evidence:** The event list includes timestamps, network-interface information, source and destination addresses, protocol, packet and byte counts, and actions. The source and destination values must be interpreted in context: an unfamiliar public IP alone does not prove malicious activity.
 
-<details>
-<summary>📸 Expanded CloudWatch log record with REJECT action — screenshot</summary>
-
 ![Expanded CloudWatch log record with REJECT action](screenshots/13-expanded-rejected-flow-record.png)
-
-</details>
 
 **Evidence:** An expanded event includes the `REJECT` action and `OK` log status. `REJECT` indicates traffic the security group or Network ACL did not permit; `OK` describes flow-log recording status, not authorization of the connection.
 
@@ -282,12 +217,7 @@ With VPC Flow Logs enabled, I opened the CloudWatch log group and inspected its 
 
 Next, I used **CloudWatch Logs Insights** to identify high-volume source/destination address pairs. In the newer CloudWatch layout, this capability may appear under **Log Analytics**; I also used the classic Logs Insights interface for the sample query.
 
-<details>
-<summary>📸 CloudWatch Log Analytics interface showing the newer query experience — screenshot</summary>
-
 ![CloudWatch Log Analytics interface showing the newer query experience](screenshots/14-log-analytics-interface.png)
-
-</details>
 
 **Evidence:** CloudWatch introduced a revised query interface during this lab, so I learned how to locate the same analysis workflow despite UI differences from the tutorial.
 
@@ -301,12 +231,7 @@ stats sum(bytes) as bytesTransferred by srcAddr, dstAddr
 
 It **groups log records by source and destination address**, sums the `bytes` field for each pair, sorts the results in descending order, and returns the ten largest totals for the selected time window. These are aggregated **recorded network bytes**, not a packet capture or proof of file exfiltration.
 
-<details>
-<summary>📸 Top 10 source and destination address pairs by bytes transferred — screenshot</summary>
-
 ![Top 10 source and destination address pairs by bytes transferred](screenshots/15-top-10-byte-transfers.png)
-
-</details>
 
 **Evidence:** The query completed against one log group, showing **1,561 matching records** scanned in the displayed interval and a ranked table. The top address pair in the screenshot had **137,256 recorded bytes** in each direction of the displayed source/destination pairing. The public instance IP in that table has been redacted.
 
