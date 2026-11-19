@@ -12,6 +12,10 @@
 
 </div>
 
+![AWS VPC Monitoring with Flow Logs project cover](assets/aws-vpc-flow-logs-thumbnail.jpg)
+
+*Project cover illustration. For the actual lab address ranges (`10.1.0.0/16` and `10.2.0.0/16`), refer to the architecture diagram below.*
+
 **Project outcome:** I built a two-VPC AWS environment, diagnosed why the first private-IP ping failed, established a working peering connection with reciprocal routes, and configured VPC Flow Logs to deliver traffic metadata to CloudWatch. I also investigated IAM and SSH connectivity problems during setup.
 
 **Technologies:** Amazon VPC · Amazon EC2 · VPC Flow Logs · Amazon CloudWatch Logs / Logs Insights · AWS IAM · VPC Peering · Security Groups · Route Tables · ICMP
