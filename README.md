@@ -1,12 +1,24 @@
-# AWS VPC Flow Logs Monitoring & Network Traffic Analysis
+<div align="center">
 
-**A hands-on AWS cloud security lab: building two VPCs, troubleshooting connectivity, enabling private VPC peering, and investigating network traffic with CloudWatch.**
+# 🔐 AWS VPC Flow Logs Monitoring & Network Traffic Analysis
+
+### VPC Peering · IAM Roles · CloudWatch Logs Insights · Network Security Monitoring
+
+![AWS](https://img.shields.io/badge/AWS-VPC%20Flow%20Logs-FF9900?logo=amazonaws&logoColor=white)
+![Network](https://img.shields.io/badge/Network-VPC%20Peering-2563EB)
+![Security](https://img.shields.io/badge/Security-Traffic%20Monitoring-16A34A)
+![Logs](https://img.shields.io/badge/CloudWatch-Logs%20Insights-9333EA)
+![Status](https://img.shields.io/badge/Status-Completed-16A34A)
+
+</div>
+
+**Project outcome:** I built a two-VPC AWS environment, diagnosed why the first private-IP ping failed, established a working peering connection with reciprocal routes, and configured VPC Flow Logs to deliver traffic metadata to CloudWatch. I also investigated IAM and SSH connectivity problems during setup.
 
 **Technologies:** Amazon VPC · Amazon EC2 · VPC Flow Logs · Amazon CloudWatch Logs / Logs Insights · AWS IAM · VPC Peering · Security Groups · Route Tables · ICMP
 
-> **Screenshot note:** The README references an accompanying `screenshots/` directory. The images are supplied in the GitHub-ready project archive; their links will render once that directory is uploaded to this repository.
+**Evidence:** [Screenshot evidence index](screenshots/README.md) · [Architecture diagram](architecture/aws-vpc-flow-logs-architecture.svg) · [CloudWatch query](#6-investigate-recorded-network-traffic)
 
-> **Project outcome:** I built a two-VPC test environment, identified why private-IP traffic initially failed, established a working peering connection, and configured VPC Flow Logs to deliver network metadata into CloudWatch for investigation. The project also included real IAM and SSH troubleshooting rather than just a successful first-time setup.
+> **Screenshot publishing:** The README references 15 sanitized project screenshots, which are available in the GitHub-ready ZIP but have not yet been added to the GitHub repository. Once uploaded under `screenshots/`, they will display directly beside the corresponding explanations.
 
 ## Table of Contents
 
@@ -45,32 +57,9 @@ I created two isolated AWS virtual networks and used EC2 instances as test endpo
 
 ## Architecture
 
-```mermaid
-flowchart TB
-    subgraph AWS["AWS — us-east-1 (N. Virginia)"]
-        subgraph VPC1["NextWork VPC 1 — 10.1.0.0/16"]
-            S1["Public subnet — 10.1.0.0/20"]
-            EC2A["Amazon Linux 2023 EC2\nPrivate IP: 10.1.4.238"]
-            RT1["Route: 10.2.0.0/16 → pcx"]
-            S1 --- EC2A
-            S1 --- RT1
-        end
+![Original two-VPC network architecture showing EC2 instances, private VPC peering, VPC Flow Logs, IAM delivery role and CloudWatch Logs Insights](architecture/aws-vpc-flow-logs-architecture.svg)
 
-        subgraph VPC2["NextWork VPC 2 — 10.2.0.0/16"]
-            S2["Public subnet — 10.2.0.0/20"]
-            EC2B["Amazon Linux 2023 EC2\nPrivate IP: 10.2.6.35"]
-            RT2["Route: 10.1.0.0/16 → pcx"]
-            S2 --- EC2B
-            S2 --- RT2
-        end
-
-        EC2A <-->|"Private ICMP over VPC peering"| EC2B
-        VPC1 -. "VPC 1 IP flow metadata" .-> FL["VPC Flow Logs"]
-        ROLE["IAM service role and trust policy"] -. "Authorizes log delivery" .-> FL
-        FL --> CW["CloudWatch Logs\nNextWorkVPCFlowLogsGroup"]
-        CW --> Q["CloudWatch Logs Insights\nTraffic analysis"]
-    end
-```
+**Diagram:** VPC 1 and VPC 2 have non-overlapping address spaces. ICMP was tested before and after configuring a peering connection. Only VPC 1's Flow Log was verified in the console evidence, and CloudWatch received its records.
 
 **Network path:** Initially, each VPC had only its own local route and a default route to its internet gateway. Peering plus an explicit destination-CIDR route in **both** route tables enabled private inter-VPC traffic. The flow log shown in the AWS Console was attached to **VPC 1** (which includes its public subnet); this lab does not establish that an equivalent flow log was created on VPC 2.
 
